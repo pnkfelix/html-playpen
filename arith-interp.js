@@ -9,7 +9,11 @@
 // J-Exprs are my attempt to do the same trick, but atop JSON, for
 // ease of transmission between different services (JSON seems like a
 // popular and easy format to support).  Note that in my pidgen JSON
-// below, I am not wrapping the keys on Object.
+// below, I am not wrapping the keys on Object in quotes; they are
+// implicitly Strings.  (This is fine for JavaScript code like this,
+// but would be a no-no if I wanted to start keeping those bits of
+// "page source" in so-called .json files, since its not allowed by
+// JSON spec.
 //
 // Note that there is a categorical danger introduced when handling
 // arbitrary HTML, namely in whether an HTML document is a single
