@@ -199,9 +199,7 @@ var body =
       , [{button:{id:"identityButton"}}, 'identity']
       , [{button:{id:"arithmeticButton"}}, 'arithmetic']]
      ,
-     {input:{type:"text", id:"exprField"}}
-     ,
-     [{button:{id:"evalButton"}}, 'eval']
+     [{section:{id:"evalArea"}}]
      ,
      [{section:{id:"answer"}}]
     ];
@@ -269,27 +267,39 @@ function jsload() {
 }
 
 function loadIdentityInterp () {
-    setTitle("Loading Identity Interpreter");
-    var x = document.getElementById("answer");
-    var s = document.getElementById("evalButton");
-    var t = document.getElementById("exprField");
-    s.onclick = function() {
-        // Oh pedantry.
-        function id(x) { return x; }
-        var answer = id(t.value);
 
-        clearChildren(x);
-        x.appendChild(document.createTextNode(t.value));
+    function setupEvalArea() {
+        var a = document.getElementById("evalArea");
+        clearChildren(a);
+        var evalArea = [{input:{type:"text", id:"exprField"}},
+                        [{button:{id:"evalButton"}}, 'eval']];
+        for (var k in evalArea) {
+            a.appendChild(convJExprToDOM(evalArea[k]));
+        }
     }
+
+    function installInterpreter() {
+        var x = document.getElementById("answer");
+        var s = document.getElementById("evalButton");
+        var t = document.getElementById("exprField");
+
+        s.onclick = function() {
+            // Oh pedantry.
+            function id(x) { return x; }
+            var answer = id(t.value);
+
+            clearChildren(x);
+            x.appendChild(document.createTextNode(t.value));
+        }
+    }
+
+    setTitle("Loading Identity Interpreter");
+    setupEvalArea();
+    installInterpreter();
     setTitle("Identity Interpreter");
 }
 
 function loadArithmeticInterp () {
-    setTitle("Loading Arithmetic Interpreter");
-    var x = document.getElementById("answer");
-    var s = document.getElementById("evalButton");
-    var t = document.getElementById("exprField");
-
     // This pareer does not handle precedence rules.
     function read(t) {
         var parenStack = [];
@@ -325,9 +335,17 @@ function loadArithmeticInterp () {
                 continue;
             }
 
-            break;
+            if (m = /^ *$/.exec(t)) {
+                break;
+            }
+
+            return undefined;
         }
-        return results;
+
+        if (results.length > 0)
+            return results;
+        else
+            return undefined;
     }
 
     // An ArithOp is one of:
@@ -360,14 +378,52 @@ function loadArithmeticInterp () {
         }
     }
 
-    s.onclick = function() {
-        // Once had eval(t.value) here; such an obvious security hole
-        // it is not even funny.
 
-        var input = read(t.value);
-        var answer = arithEval(input);
-        clearChildren(x);
-        x.appendChild(document.createTextNode(JSON.stringify(answer)));
+    // Two issues:
+    //
+    // 1. "code duplication" between loadArithmeticInterp and
+    //    loadIdentityInterp
+    //    (probably artificial and not worth worrying about)
+    //
+    // 2. We lose the state of the text field during each switch; that
+    //    may be "a good thing", but it also almost certainly does not
+    //    match ones expectation, and it would be a good exercise to
+    //    learn how to retain that state.
+    //
+    //  By "learn how to retain that state", I mean beyond obvious
+    //  answers like going back to the previous form where it was
+    //  hard-coded into body var above, or other ugliness like adding
+    //  an "initiailized" flag.  I'm thinking more something along the
+    //  lines of a cloning mechanism that tries to preserve content
+    //  during these shifts.
+
+    function setupEvalArea() {
+        var a = document.getElementById("evalArea");
+        clearChildren(a);
+        var evalArea = [{input:{type:"text", id:"exprField"}},
+                        [{button:{id:"evalButton"}}, 'eval']];
+        for (var k in evalArea) {
+            a.appendChild(convJExprToDOM(evalArea[k]));
+        }
     }
+
+    function installInterpreter() {
+        var x = document.getElementById("answer");
+        var s = document.getElementById("evalButton");
+        var t = document.getElementById("exprField");
+
+        s.onclick = function() {
+            // Once had eval(t.value) here; such an obvious security hole
+            // it is not even funny.
+
+            var input = read(t.value);
+            var answer = (input == undefined) ? undefined : arithEval(input);
+            clearChildren(x);
+            x.appendChild(document.createTextNode(JSON.stringify(answer)));
+        }
+    }
+    setTitle("Loading Arithmetic Interpreter");
+    setupEvalArea();
+    installInterpreter();
     setTitle("Arithmetic Interpreter");
 }
