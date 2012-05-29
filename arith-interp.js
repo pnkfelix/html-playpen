@@ -133,15 +133,19 @@ var is =
         return x;
     })();
 
-function die() { throw new Error("Malformed JExpr"); }
+
+function die() { throw new Error("Program Malfunction"); }
 function assert(p) { if (!p) die(); }
 
 function casesJExpr(visitStr, visitTagNull, visitTag) {
+    function die() { throw new Error("Malformed JExpr"); }
+    function assert(p) { if (!p) die(); }
+
     function jtagName(x) {
         var t = null; for (k in x) { assert(t == null); t = k; }
         return t;
     }
-    function jtagAttrs(x) { var t = jtagName(x); return x[t]; }
+    function jtagAttrs(x) { assert(x); var t = jtagName(x); return x[t]; }
 
     return function(je) {
         if (is.String(je)) { return visitStr(je); }
@@ -181,43 +185,116 @@ function convJExprToDOM(jexpr) {
 }
 
 var body =
-    [[{hgroup:{}},
-      [{h1:{}}, '"Simple" Arithmetic Interpreter'],
-      [{h2:{}}, 'an exercise in PL implementation within HTML5']],
+    [[{hgroup:{}}
+      , [{h1:{}}, '"Simple" Arithmetic Interpreter']
+      , [{h2:{}}, 'an exercise in PL implementation within HTML5']]
+     ,
      [{section:{id:"bootstrap"}}
-      // bootstrap section will get filled in by the associated
+      // bootstrap section could get also filled in by the associated
       // javascript program with all the programs it wants to support
       // at bootstrap time
-     ],
-     {input:{type:"text", id:"exprField"}},
-     [{button:{id:"evalButton"}}, 'eval'],
+      //
+      // But since I'm now already sitting in Javascript, we will do
+      // it directly in this JSON for now.
+      , [{button:{id:"identityButton"}}, 'identity']
+      , [{button:{id:"arithmeticButton"}}, 'arithmetic']]
+     ,
+     {input:{type:"text", id:"exprField"}}
+     ,
+     [{button:{id:"evalButton"}}, 'eval']
+     ,
      [{section:{id:"answer"}}]
     ];
 
-function jsload() {
-    var bs = document.getElementsByTagName('body');
-    var b = bs[0];
-    // b.appendChild(document.createTextNode('Hello World'));
-    for (var i=0; i < body.length; i++) {
-        var e = convJExprToDOM(body[i]);
-        //b.appendChild(document.createTextNode(e.toString()))
-        b.appendChild(e);
+function setTitle(title) {
+    document.title = title;
+
+    // The below does not work.
+    // see
+    //   http://bytes.com/topic/javascript/answers/148055-how-do-i-change-document-title
+    // for potential explanations.
+    //
+    // But the above is certainly simple enough.
+
+    if (false) {
+        var t =document.getElementsByTagName('title');
+        t.removeChild(t.lastChild);
+        t.appendChild(document.createTextNode("Hello There From Title"));
     }
 }
 
-function jsload_orig() {
-    var x = document.getElementById("bootstrap");
-    var b = document.createElement('button');
-    b.setAttribute('id', 'loadIdentityButton')
-    b.appendChild(document.createTextNode('identity'));;
-    x.appendChild(b);
+// See
+//  http://stackoverflow.com/questions/3955229/remove-all-child-elements-of-a-dom-node-in-javascript
+function clearChildren(x) {
+    // One way
+    if (true) {
+        while (x.firstChild) {
+            x.removeChild(x.firstChild);
+        }
+        return x;
+    } else if (false) {
+        // Another potential way
+        x.innerHTML = '';
+        return x;
+    } else if (false) {
+        // not really the same but potentially of interest nonetheless
+        return x.cloneNode(false);
+    }
 }
 
-function idload () {
+function jsload() {
+
+    function marshalBody(body) {
+        var bs = document.getElementsByTagName('body');
+        var b = bs[0];
+        for (var i=0; i < body.length; i++) {
+            var e = convJExprToDOM(body[i]);
+            //b.appendChild(document.createTextNode(e.toString()))
+            b.appendChild(e);
+        }
+    }
+
+    function linkInterpreter(buttonId, loader) {
+        var b = document.getElementById(buttonId);
+        b.onclick = loader;
+    }
+
+    setTitle('Generic Interpreter');
+    //setTitle('"Simple" Arithmetic Interpreter');
+
+    marshalBody(body);
+
+    linkInterpreter('identityButton', loadIdentityInterp);
+    linkInterpreter('arithmeticButton', loadArithmeticInterp);
+}
+
+function loadIdentityInterp () {
+    setTitle("Loading Identity Interpreter");
     var x = document.getElementById("answer");
     var s = document.getElementById("evalButton");
     var t = document.getElementById("exprField");
     s.onclick = function() {
+        // Oh pedantry.
+        function id(x) { return x; }
+        var answer = id(t.value);
+
+        clearChildren(x);
         x.appendChild(document.createTextNode(t.value));
     }
+    setTitle("Identity Interpreter");
+}
+
+function loadArithmeticInterp () {
+    setTitle("Loading Arithmetic Interpreter");
+    var x = document.getElementById("answer");
+    var s = document.getElementById("evalButton");
+    var t = document.getElementById("exprField");
+    s.onclick = function() {
+        // Such an obvious security hole it is not even funny.
+        var answer = eval(t.value);
+
+        clearChildren(x);
+        x.appendChild(document.createTextNode(answer));
+    }
+    setTitle("Arithmetic Interpreter");
 }
