@@ -187,7 +187,7 @@ function convJExprToDOM(jexpr) {
 var body =
     [[{hgroup:{}}
       , [{h1:{}}, '"Simple" Arithmetic Interpreter']
-      , [{h2:{}}, 'an exercise in PL implementation within HTML5']]
+      , [{h2:{}}, 'An exercise in PL implementation within HTML (5?)']]
      ,
      [{section:{id:"bootstrap"}}
       // bootstrap section could get also filled in by the associated
@@ -289,12 +289,85 @@ function loadArithmeticInterp () {
     var x = document.getElementById("answer");
     var s = document.getElementById("evalButton");
     var t = document.getElementById("exprField");
-    s.onclick = function() {
-        // Such an obvious security hole it is not even funny.
-        var answer = eval(t.value);
 
+    // This pareer does not handle precedence rules.
+    function read(t) {
+        var parenStack = [];
+        var results = [];
+        var m;
+
+        while (true) {
+            // console.log("WTF "+t);
+            if (m = /^ *([+\-\*\/])(.*)/.exec(t)) {
+                results.push(m[1]);
+                t = m[2];
+                continue;
+            }
+
+            if (m = /^ *([0-9]+)(.*)/.exec(t)) {
+                results.push(Number(m[1]));
+                t = m[2];
+                continue;
+            }
+
+            if (m = /^ *(\()(.*)/.exec(t)) {
+                parenStack.push(results);
+                results = [];
+                t = m[2];
+                continue;
+            }
+
+            if (m = /^ *(\))(.*)/.exec(t)) {
+                var saved = parenStack.pop();
+                saved.push(results);
+                results = saved;
+                t = m[2];
+                continue;
+            }
+
+            break;
+        }
+        return results;
+    }
+
+    // An ArithOp is one of:
+    // -- "+"
+    // -- "-"
+    // -- "*"
+    // -- "/"
+
+    // An ArithExp is one of:
+    // -- Number
+    // -- [ArithExp, ArithOp, ArithExp, ...]
+
+    function arithEval(a) {
+        // console.log("arithEval "+a);
+
+        if (is.Number(a)) {
+            return a;
+        } else {
+            var x = arithEval(a[0]);
+            if (a.length < 3) {
+                return x;
+            } else {
+                var op = a[1];
+                var y = arithEval(a.slice(2));
+                if (op == "+") { return x + y; }
+                else if (op == "-") { return x - y; }
+                else if (op == "*") { return x * y; }
+                else if (op == "/") { return x / y; }
+            }
+        }
+    }
+
+    s.onclick = function() {
+        // Once had eval(t.value) here; such an obvious security hole
+        // it is not even funny.
+
+        var input = read(t.value);
+        var answer = arithEval(input);
         clearChildren(x);
-        x.appendChild(document.createTextNode(answer));
+        x.appendChild(document.createTextNode(JSON.stringify(answer)));
     }
     setTitle("Arithmetic Interpreter");
 }
