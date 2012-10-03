@@ -1,0 +1,315 @@
+<!DOCTYPE HTML>
+<!-- -*- indent-tabs: nil -*- -->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>FSK Score Keeper</title>
+
+<script src="modernizr.js"></script>
+
+<!-- <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script> -->
+<script src="jquery.js"></script>
+
+<script type="text/javascript">
+var numPlayers = 2;
+
+function update_canvas_dimensions() {
+
+    var viewportWidth = window.innerWidth;
+    var viewportHeight = window.innerHeight;
+
+    var trackWidth  = 15 * numPlayers;
+
+
+    var c = document.getElementById('canvasbg');
+    var d = document.getElementById('outerdiv');
+
+    // d.style.width = viewportWidth;
+    // d.setAttribute('style', "width:"+viewportWidth+'px');
+    if (true) {
+        d.setAttribute('style', ("width: "+viewportWidth+'px' + ';' +
+                                 //"min-width:"+viewportWidth+'px' + ';' +
+                                 "min-height:"+viewportHeight+'px'));
+    }
+
+    // (Put this back in after I figure out how to adjust the offset
+    // for the inner div.)
+    c.setAttribute('width', viewportWidth);
+    // c.setAttribute('height', viewportHeight);
+
+
+    var id = document.getElementById('innercontent');
+
+    // var w = (viewportWidth - 2 * trackWidth) + 'px';
+    var w = (viewportWidth - 2 * trackWidth) + 'px';
+    var h = (viewportHeight - 2 * trackWidth) + 'px';
+
+    // alert("Hello" + JSON.stringify(id["setAttribute"]));
+    id.setAttribute('style', (' position:absolute;'+
+                              ' min-width:'+w + ';' +
+                              ' min-height:'+h + ';' +
+                              ' top:' + trackWidth + 'px' +';' +
+                              ' left:'+ trackWidth + 'px'));
+}
+
+$(document).ready(function() {
+
+    window.onload = window.onresize = update_canvas_dimensions;
+
+    // These are JQuery demos.
+
+    // adds CSS class ".test" to all <a> elements.
+    $("a").addClass("test");
+
+    $("a").click(function(e) {
+        alert("Thanks for visiting!");
+        $("a").removeClass("test");
+    });
+
+    $("p").click(function() {
+        // $(this).hide();
+        $(this).hide("slow");
+    });
+
+    // These are controls for the (brutish non-canvas) player score bars.
+
+    var last = { w1 : "20px", h1 : "10px", w2 : "500px", h2 : "50px" };
+
+    function adjustWidth(playerId, width) {
+        var oldWidth = $(playerId + " .animate").css("width").match(/[0-9]*/);
+        var difference = Math.abs(width - oldWidth);
+        // alert(oldWidth + " " + difference)
+        $(playerId + " .animate").animate({ width: width }, difference);
+    }
+
+    function toggle() {
+        // alert($("#animate1").css("width"));
+        // alert(JSON.stringify(last));
+        var next = last;
+        last = {};
+        last.w1 = $("#player1 .animate").css("width");
+        last.w2 = $("#player2 .animate").css("width");
+
+        adjustWidth("#player1", next.w1);
+        adjustWidth("#player2", next.w2);
+    };
+
+    function deltaScore(p, delta) {
+        var score = $(p + " .score").text();
+        score = Number(score);
+        score = score + delta;
+        $(p + " .score").text(score);
+        adjustWidth(p, score * 10);
+    }
+
+    function addone(p) { deltaScore(p, 1); }
+    function subone(p) { deltaScore(p, -1); }
+
+    function getDelta(p) {
+        var elem = $(p + " .inputdelta");
+        // alert(JSON.stringify(elem));
+        // alert("value" in elem);
+        var delta = elem.val();
+        // alert(p + " " + delta);
+        return delta;
+    }
+
+    function establishClickHandlers(playerNum) {
+        var playerId = "#player" + playerNum;
+        var playerClick = playerId + " .animate";
+        var incroneClick = playerId + " .incrone";
+        var decroneClick = playerId + " .decrone";
+        var incrvarClick = playerId + " .incrvar";
+        var decrvarClick = playerId + " .decrvar";
+        $(playerClick).click(function() {
+            toggle();
+            addone(playerId);
+        });
+        $(incroneClick).click(function() { addone(playerId); });
+        $(decroneClick).click(function() { subone(playerId); });
+        $(incrvarClick).click(function() {
+            var delta = getDelta(playerId);
+            if (!isNaN(parseInt(delta))) {
+                deltaScore(playerId, parseInt(delta));
+            } else {
+                alert("delta " + delta + " is noninteger.");
+            }
+        });
+        $(decrvarClick).click(function() {
+            var delta = getDelta(playerId);
+            if (!isNaN(parseInt(delta))) {
+                deltaScore(playerId, - parseInt(delta));
+            } else {
+                alert("delta " + delta + " is noninteger.");
+            }
+        });
+    }
+    establishClickHandlers("1");
+    establishClickHandlers("2");
+
+    function addPlayer(name, color) {
+        numPlayers = numPlayers + 1;
+    }
+
+    canvasApp();
+});
+
+function canvasSupport() {
+    return Modernizr.canvas;
+}
+
+function canvasApp() {
+    if (!canvasSupport()) {
+        return;
+    } else {
+        var theCanvas = document.getElementById("canvas");
+        var context = theCanvas.getContext("2d");
+    }
+
+    drawScreen();
+
+    function drawScreen() {
+        // make changes here.
+        context.fillStyle = '#aaaaaa';
+        context.fillRect(0, 0, 200, 200);
+        context.fillStyle = '#000000';
+        context.font = '20px _sans';
+        context.textBaseline = 'top';
+        context.fillText("Canvas!", 0, 0);
+    }
+}
+</script>
+
+<style>
+
+    a.test { font-weight: bold; }
+
+    .animate { border: 1px solid white; height: 50px; width: 200px; float: right;}
+    div.button { border: 1px solid white; height: 50px; width: 50px; }
+
+    button.button { border: 1px solid; height: 30px; width: 50px; }
+
+    #player1 .button { background: red }
+    #player2 .button { background: blue }
+
+    div.player { overflow: auto }
+
+    input.inputdelta { width:40px; }
+
+    canvas { border: dotted }
+
+    #outerdiv { z-index: -3; position: absolute; top: 0px; left: 0px; background: #00ffee; border: 0px dotted; margin: 0px; }
+    #canvasbg { z-index: -2; position: fixed; top: 0px; left: 0px; background: #ff00ee; }
+     #innercontent {
+         position:absolute;
+         background: #eeeeee;
+         margin: 0px; border: 0px dotted;
+         overflow: auto;
+     }
+</style>
+
+<style type="text/css">
+        body
+        {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header
+        {
+            height: 100px;
+            background-color: red;
+        }
+
+        .content
+        {
+            height: 100%;
+            background-color: green;
+        }
+</style>
+
+<script type="text/javascript">
+function resize()
+{
+    var contentDiv = document.getElementById("contentId");
+    var headerDiv = document.getElementById("headerId");
+    var headerHeight = headerDiv.offsetHeight;
+
+    var viewportHeight = document.getElementsByTagName('body')[0].clientHeight;
+
+    contentDiv.style.height = viewportHeight - headerHeight;
+}
+
+window.onload = resize;
+window.onresize = resize;
+</script>
+</head>
+
+<!-- fill iOS screen with canvas -->
+<meta name="viewport" content="width=100%" />
+
+<body>
+
+<div id="outerdiv">
+    <canvas id="canvasbg">
+      Your browser does not support HTML5 Canvas.
+    </canvas>
+    I wonder how I make this occupy the whole width of the screen
+
+<div id="innercontent">
+Hello World
+
+<p>If you click on me, I will disappear.</p>
+
+<a>hi there 1</a>
+<p><a>hi there 2</a></p>
+
+<p>Me as well.</p>
+
+<div id="players">
+    <div class="player" id="player1">
+
+    <div style="float:left" style="width:30px">
+    <button style="height:5%" class="incrvar button">+?</button><br/>
+    <input type="number" class="inputdelta" value="10"></input><br/>
+    <button style="height:5%" class="decrvar button">-?</button>
+    </div>
+
+    <div style="float:left">
+    <button class="incrone button">+1</button><br/>
+    <button class="decrone button">-1</button>
+    </div>
+
+    Felix: <span class="score">20</span>
+    <button class="animate" style="background: red;"></button>
+    </div>
+
+    <div class="player" id="player2">
+    <div class="animate" style="background: blue;"></div>
+    <div style="float:left">
+    <button class="incrone button">+1</button><br/>
+    <button class="decrone button">-1</button>
+    </div>
+
+    <div style="float:left">
+    <button style="height:5%" class="incrvar button">+?</button><br/>
+    <input type="number" class="inputdelta" value="10"></input><br/>
+    <button style="height:5%" class="decrvar button">-?</button>
+    </div>
+
+
+    Rob: <div class="score">50</div>
+    </div>
+</div>
+
+<div id="newPlayer">
+    <input name="newplayername"></input>
+    <button id="addPlayer">Add Player</button>
+</div>
+
+</div>
+</div>
+
+</body>
+</html>
