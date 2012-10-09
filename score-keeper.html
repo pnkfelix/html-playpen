@@ -88,7 +88,8 @@ Array.prototype.sum = function(f) {
 </script>
 
 <script type="text/javascript">
-var numPlayers = 2;
+// var numPlayers = 2;
+var numPlayers = 0;
 var nextPlayerNum = 1;
 
 // A PlayerObj has (at least) the following properties:
@@ -338,8 +339,8 @@ $(document).ready(function() {
     addPlayer("Felix", "#ff0000");
     addPlayer("Rob", "#0000ff");
 
-    establishClickHandlers("1");
-    establishClickHandlers("2");
+    // establishClickHandlers("1");
+    // establishClickHandlers("2");
 
     function addPlayer(name, color) {
 	var noName = (name == "");
