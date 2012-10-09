@@ -11,7 +11,178 @@
 <script src="jquery.js"></script>
 
 <script type="text/javascript">
+Array.prototype.ormap = function(f) {
+    for (var i = 0; i < this.length; i++) {
+        if (f(this[i])) return true;
+    }
+    return false;
+};
+Array.prototype.andmap = function(f) {
+    for (var i = 0; i < this.length; i++) {
+        var val = f(this[i]);
+        // alert('andmap k:'+i+ ' this[i]:'+this[i] + ' f(this[i]):'+val);
+        if (! val) return false;
+    }
+    return true;
+};
+function id(x) { return x; }
+
+Array.prototype.keymin = function(f) {
+    if (this.length <= 0) return NaN;
+    if (f == undefined) f = id;
+    var k = 0;
+    var cand = f(this[0]);
+    for (var i = 1; i < this.length; i++) {
+        var val = f(this[i]);
+        if (val < cand) {
+            cand = val;
+            k = i;
+        }
+    }
+    return k;
+}
+
+Array.prototype.keymax = function(f) {
+    if (this.length <= 0) return NaN;
+    if (f == undefined) f = id;
+    var k = 0;
+    var cand = f(this[0]);
+    for (var i = 1; i < this.length; i++) {
+        var val = f(this[i]);
+        if (val > cand) {
+            cand = val;
+            k = i;
+        }
+    }
+    return k;
+}
+
+Array.prototype.valmin = function(f) {
+    var k = this.keymin.call(this, f);
+    return this[k];
+}
+
+Array.prototype.valmax = function(f) {
+    var k = this.keymax.call(this, f);
+    return this[k];
+}
+
+Array.prototype.sum = function(f) {
+    var ret = 0;
+    if (f == undefined) f = id;
+    for (var i = 0; i < this.length; i++) {
+        ret += f(this[i]);
+    }
+    return ret;
+}
+</script>
+
+<script type="text/javascript">
+        function inspect(elm) {
+            var str = "";
+            for (var i in elm) {
+                str += i + ': ' + elm.getAttribute(i) + '\n';
+            }
+            alert(str);
+        }
+</script>
+
+<script type="text/javascript">
 var numPlayers = 2;
+var nextPlayerNum = 1;
+
+// A PlayerObj has (at least) the following properties:
+// - inputDiv
+
+function Player(name, color) {
+    this.name = name;
+    this.color = color;
+
+    var newPlayerDiv = document.createElement('div');
+    newPlayerDiv.id = 'player' +nextPlayerNum;
+    nextPlayerNum += 1;
+    this.div = newPlayerDiv;
+}
+
+function varInputChanged(x) {
+    // alert('varInputChanged ' + x);
+    var pObj = idPlayerMap[x];
+    establishVarDeltaButtonLabels(pObj);
+}
+
+function establishVarDeltaButtonLabels(pObj) {
+    var x = pObj.div.id;
+    var newVal = $('#' + x + ' .inputdelta').val();
+
+    var b;
+    b = pObj.incrVarButton;
+    b.replaceChild(document.createTextNode("+"+newVal), b.firstChild);
+
+    b = pObj.decrVarButton;
+    b.replaceChild(document.createTextNode("-"+newVal), b.firstChild);
+}
+
+// Arrayof PlayerObj
+var players = [];
+// Map from ID to PlayerObj
+var idPlayerMap = {};
+
+// Arrayof [Byte Byte Byte]
+var usedColors = [];
+
+// Arrayof String
+var usedNames = [];
+
+var nextColor = "yellow";
+
+function colorhexToBytetriple(color) {
+    var num = parseInt((color.replace('#', '')), 16);
+    var r = (num >> 16) % 256;
+    var g = (num >>  8) % 256;
+    var b = (num >>  0) % 256;
+    var ret = [r, g, b];
+    return ret;
+}
+function bytetripleToColorhex(trip) {
+    return '#' + ((trip[0] << 16) + (trip[1] << 8) + trip[0]);
+}
+function bytetripleManhattanDistance(t1, t2) {
+    var deltas = [Math.abs(t1[0] - t2[0]),
+                  Math.abs(t1[1] - t2[1]),
+                  Math.abs(t1[2] - t2[2])];
+    var ret = deltas.sum();
+    return ret;
+}
+function bytetripleEuclideanDistance(t1, t2) {
+    var deltas = [Math.abs(t1[0] - t2[0]),
+                  Math.abs(t1[1] - t2[1]),
+                  Math.abs(t1[2] - t2[2])];
+    var ret = Math.sqrt(deltas.map(function (x) { return x*x; }).sum());
+    return ret;
+}
+var bytetripleDistance = bytetripleEuclideanDistance;
+var bytetriplePreferableMinDistance = 100;
+
+
+function chooseNextColor() {
+    var cand;
+    do {
+        cand = '#' + (Math.floor(Math.random() * (256 * 256 * 256))).toString(16);
+        var t1 = colorhexToBytetriple(cand);
+        // alert("cand " + t1.join(","));
+        function finddist(t2) { return bytetripleDistance(t1, t2); }
+        var dists = usedColors.map(finddist);
+        var k = usedColors.keymin(finddist);
+        var v = usedColors[k];
+        // alert('cand:' + t1.join(',') + ' min dist:' + dists.valmin() + ' key:' + k + ' val:'+v.join(','));
+    } while (dists.ormap(function (d) {
+        return d < bytetriplePreferableMinDistance; }));
+    nextColor = cand;
+    // alert(nextColor);
+    document.getElementById("addPlayer").style.backgroundColor = nextColor;
+}
+
+function elem(id) { return document.getElementById(id); }
 
 function update_canvas_dimensions() {
 
@@ -21,40 +192,51 @@ function update_canvas_dimensions() {
     var trackWidth  = 15 * numPlayers;
 
 
-    var c = document.getElementById('canvasbg');
-    var d = document.getElementById('outerdiv');
+    var c = elem('canvasbg');
+    var d = elem('outerdiv');
 
-    // d.style.width = viewportWidth;
-    // d.setAttribute('style', "width:"+viewportWidth+'px');
-    if (true) {
-        d.setAttribute('style', ("width: "+viewportWidth+'px' + ';' +
-                                 //"min-width:"+viewportWidth+'px' + ';' +
-                                 "min-height:"+viewportHeight+'px'));
+    function addStyle(e, key, val) {
+       e.style.removeProperty(key);
+       var s = e.getAttribute('style');
+       if (!s) { s = ''; }
+       e.setAttribute('style', s + key + ':' + val + ';');
     }
+
+    addStyle(d, 'width',  viewportWidth + 'px');
+    addStyle(d, 'height', viewportHeight + 'px');
+    addStyle(d, 'min-height', viewportHeight + 'px');
+    var d_style = d.getAttribute('style');
 
     // (Put this back in after I figure out how to adjust the offset
     // for the inner div.)
     c.setAttribute('width', viewportWidth);
-    // c.setAttribute('height', viewportHeight);
+    c.setAttribute('height', viewportHeight);
 
 
-    var id = document.getElementById('innercontent');
+    var id = elem('innercontent');
 
     // var w = (viewportWidth - 2 * trackWidth) + 'px';
     var w = (viewportWidth - 2 * trackWidth) + 'px';
     var h = (viewportHeight - 2 * trackWidth) + 'px';
 
     // alert("Hello" + JSON.stringify(id["setAttribute"]));
+    // id.removeAttr('style');
+    // id.style.removeProperty('width');
     id.setAttribute('style', (' position:absolute;'+
                               ' min-width:'+w + ';' +
                               ' min-height:'+h + ';' +
                               ' top:' + trackWidth + 'px' +';' +
                               ' left:'+ trackWidth + 'px'));
+
+    canvasApp();
 }
 
 $(document).ready(function() {
 
     window.onload = window.onresize = update_canvas_dimensions;
+
+    document.getElementById("addPlayer").style.backgroundColor = nextColor;
+
 
     // These are JQuery demos.
 
@@ -106,6 +288,7 @@ $(document).ready(function() {
     function subone(p) { deltaScore(p, -1); }
 
     function getDelta(p) {
+        // alert('getDelta ' + p);
         var elem = $(p + " .inputdelta");
         // alert(JSON.stringify(elem));
         // alert("value" in elem);
@@ -144,11 +327,132 @@ $(document).ready(function() {
             }
         });
     }
+
+    $('#addPlayer').click(function () {
+       var inputElem = elem('newplayername');
+       var playerName = inputElem.value;
+       addPlayer(playerName, nextColor);
+       chooseNextColor();
+    });
+
+    addPlayer("Felix", "#ff0000");
+    addPlayer("Rob", "#0000ff");
+
     establishClickHandlers("1");
     establishClickHandlers("2");
 
     function addPlayer(name, color) {
-        numPlayers = numPlayers + 1;
+	var noName = (name == "");
+	var oldName = usedNames.ormap(function (n) { return n == name; });
+	if (noName || oldName) {
+	    if (noName) {
+	        var msg = "Please enter player name.";
+	    } else {
+	        var msg = "Please enter an unused player name.";
+	    }
+	    alert(msg);
+	    throw msg;
+	}
+
+	var pObj = new Player(name, color);
+
+	usedColors.push(colorhexToBytetriple(color));
+	usedNames.push(name);
+
+	players.push(pObj);
+	idPlayerMap[pObj.div.id] = pObj;
+
+	numPlayers = numPlayers + 1;
+	var playersDiv = elem('players');
+	var newPlayerDiv = pObj.div;
+
+	newPlayerDiv.setAttribute('class', 'player');
+	// newPlayerDiv.class = 'player';
+
+	{
+	    var animateDiv = document.createElement('div');
+            // animateDiv["class"] = 'animate';
+            animateDiv.setAttribute('class', 'animate');
+
+	    //animateDiv.setAttribute('style', "background: " + color + ";");
+            animateDiv.setAttribute('style', "");
+	    animateDiv.style.backgroundColor = color;
+	    animateDiv.style.minWidth = "1px";
+	    animateDiv.style.width = "0px";
+	    newPlayerDiv.appendChild(animateDiv);
+	}
+
+	{
+	    var deltaOneDiv = document.createElement('div');
+	    deltaOneDiv.setAttribute('style', 'float:left');
+	    //deltaOneDiv.style["float"] = 'left';
+	    {
+		var incrOneButton = document.createElement('button');
+		var decrOneButton = document.createElement('button');
+		incrOneButton.setAttribute('class', 'button incrone');
+		incrOneButton.style.backgroundColor = color;
+		decrOneButton.setAttribute('class', 'decrone button');
+		decrOneButton.style.backgroundColor = color;
+		incrOneButton.appendChild(document.createTextNode('+1'));
+		decrOneButton.appendChild(document.createTextNode('-1'));
+		deltaOneDiv.appendChild(incrOneButton);
+		deltaOneDiv.appendChild(document.createElement('br'));
+		deltaOneDiv.appendChild(decrOneButton);
+	    }
+	    newPlayerDiv.appendChild(deltaOneDiv);
+	}
+
+	{
+	    var deltaVarDiv = document.createElement('div');
+	    deltaVarDiv.setAttribute('style', 'float:left');
+	    //deltaVarDiv.style.float = 'left';
+	    {
+		var incrVarButton = document.createElement('button');
+		var decrVarButton = document.createElement('button');
+		var varInput = document.createElement('input');
+		pObj.incrVarButton = incrVarButton;
+		pObj.varInput = varInput;
+		pObj.decrVarButton = decrVarButton;
+
+		incrVarButton.setAttribute('class', 'incrvar button');
+		incrVarButton.style.height = "5%";
+		incrVarButton.style.backgroundColor = color;
+		incrVarButton.appendChild(document.createTextNode("+?"));
+
+		varInput.setAttribute('type', 'number');
+		varInput.setAttribute('class', 'inputdelta');
+		varInput.setAttribute('value', '10');
+		varInput.setAttribute('oninput', 'varInputChanged("' + pObj.div.id + '");');
+
+		decrVarButton.setAttribute('class', 'decrvar button');
+		decrVarButton.style.height = "5%";
+		decrVarButton.style.backgroundColor = color;
+		decrVarButton.appendChild(document.createTextNode("-?"));
+
+		deltaVarDiv.appendChild(incrVarButton);
+		deltaVarDiv.appendChild(document.createElement('br'));
+		deltaVarDiv.appendChild(varInput);
+		deltaVarDiv.appendChild(document.createElement('br'));
+		deltaVarDiv.appendChild(decrVarButton);
+	    }
+	    newPlayerDiv.appendChild(deltaVarDiv);
+
+	    newPlayerDiv.appendChild(document.createTextNode(name + ':'));
+	    var scoreDiv = document.createElement('div');
+	    scoreDiv.setAttribute('class', 'score');
+	    scoreDiv.appendChild(document.createTextNode('0'));
+	    newPlayerDiv.appendChild(scoreDiv);
+	}
+
+
+	playersDiv.appendChild(newPlayerDiv);
+
+	establishVarDeltaButtonLabels(pObj);
+
+	establishClickHandlers(""+numPlayers);
+        //inspect(playersDiv);
+
+	//alert('hi ' + color);
     }
 
     canvasApp();
@@ -162,20 +466,30 @@ function canvasApp() {
     if (!canvasSupport()) {
         return;
     } else {
-        var theCanvas = document.getElementById("canvas");
+        var theCanvas = elem("canvasbg");
         var context = theCanvas.getContext("2d");
     }
+
+    var d = elem('outerdiv');
+    var viewportWidth = d.width;
+    var viewportHeight = d.height;
 
     drawScreen();
 
     function drawScreen() {
         // make changes here.
         context.fillStyle = '#aaaaaa';
-        context.fillRect(0, 0, 200, 200);
+        // context.fillRect(0, 0, viewportWidth-300, 400-300);
         context.fillStyle = '#000000';
-        context.font = '20px _sans';
+        context.font = '40px _sans';
         context.textBaseline = 'top';
         context.fillText("Canvas!", 0, 0);
+
+        context.fillStyle = '#00bb0a';
+        context.fillRect(0, 20, 15, 400);
+
+        context.fillStyle = '#bb000a';
+        context.fillRect(20, 20, 15, 400);
     }
 }
 </script>
@@ -189,20 +503,23 @@ function canvasApp() {
 
     button.button { border: 1px solid; height: 30px; width: 50px; }
 
-    #player1 .button { background: red }
-    #player2 .button { background: blue }
+    // (Now setting below attributes locally to match dynamic construction
+    //  of new players.)
 
-    div.player { overflow: auto }
+    // #player1 .button { background-color: red }
+    // #player2 .button { background-color: blue }
+
+    div.player { overflow-y: hidden; overflow-x: auto; }
 
     input.inputdelta { width:40px; }
 
     canvas { border: dotted }
 
-    #outerdiv { z-index: -3; position: absolute; top: 0px; left: 0px; background: #00ffee; border: 0px dotted; margin: 0px; }
-    #canvasbg { z-index: -2; position: fixed; top: 0px; left: 0px; background: #ff00ee; }
+    #outerdiv { z-index: -3; position: absolute; top: 0px; left: 0px; background-color: #00ffee; border: 0px dotted; margin: 0px; }
+    #canvasbg { z-index: -2; position: fixed; top: 0px; left: 0px; background-color: #ff00ee; }
      #innercontent {
          position:absolute;
-         background: #eeeeee;
+         background-color: #eeeeee;
          margin: 0px; border: 0px dotted;
          overflow: auto;
      }
@@ -232,8 +549,8 @@ function canvasApp() {
 <script type="text/javascript">
 function resize()
 {
-    var contentDiv = document.getElementById("contentId");
-    var headerDiv = document.getElementById("headerId");
+    var contentDiv = elem("contentId");
+    var headerDiv = elem("headerId");
     var headerHeight = headerDiv.offsetHeight;
 
     var viewportHeight = document.getElementsByTagName('body')[0].clientHeight;
@@ -260,52 +577,68 @@ window.onresize = resize;
 <div id="innercontent">
 Hello World
 
+<!--
 <p>If you click on me, I will disappear.</p>
 
 <a>hi there 1</a>
 <p><a>hi there 2</a></p>
 
 <p>Me as well.</p>
+-->
 
 <div id="players">
+
+<!-- The HTML below is the original way I drafted the player rendering.
+     Now, for overall consistency, all players are created via the Javascript
+     routine addPlayer(name, color).
+-->
+
+<!--
     <div class="player" id="player1">
 
     <div style="float:left" style="width:30px">
-    <button style="height:5%" class="incrvar button">+?</button><br/>
+    <button style="height:5%; background-color:red" class="incrvar button">+?</button><br/>
     <input type="number" class="inputdelta" value="10"></input><br/>
-    <button style="height:5%" class="decrvar button">-?</button>
+    <button style="height:5%; background-color:red" class="decrvar button">-?</button>
     </div>
 
     <div style="float:left">
-    <button class="incrone button">+1</button><br/>
-    <button class="decrone button">-1</button>
+    <button style="background-color:red" class="incrone button">+1</button><br/>
+    <button style="background-color:red" class="decrone button">-1</button>
     </div>
 
     Felix: <span class="score">20</span>
-    <button class="animate" style="background: red;"></button>
+    <button class="animate" style="background-color: red;"></button>
     </div>
 
     <div class="player" id="player2">
-    <div class="animate" style="background: blue;"></div>
+    <div class="animate" style="background-color: blue;"></div>
     <div style="float:left">
-    <button class="incrone button">+1</button><br/>
-    <button class="decrone button">-1</button>
+    <button style="background-color: blue;" class="incrone button">+1</button><br/>
+    <button style="background-color: blue;" class="decrone button">-1</button>
     </div>
 
     <div style="float:left">
-    <button style="height:5%" class="incrvar button">+?</button><br/>
+    <button style="height:5%; background-color: blue;" class="incrvar button">+?</button><br/>
     <input type="number" class="inputdelta" value="10"></input><br/>
-    <button style="height:5%" class="decrvar button">-?</button>
+    <button style="height:5%; background-color: blue;" class="decrvar button">-?</button>
     </div>
 
 
     Rob: <div class="score">50</div>
     </div>
+-->
+
 </div>
 
 <div id="newPlayer">
-    <input name="newplayername"></input>
+    <input id="newplayername"></input>
     <button id="addPlayer">Add Player</button>
+    <!-- Below not implemented yet; color-picker input is insufficiently
+         supported across browsers.  There are examples online on how to
+         implement a fallback.  For now, a randomly selected color will
+         (probably) suffice. -->
+    <!-- <button id="chooseNextPlayerColor">(Change Next Color)</button> -->
 </div>
 
 </div>
