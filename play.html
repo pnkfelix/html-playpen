@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<!-- -*- indent-tabs: nil -*- -->
+<html>
+<head><title>FSK Play Area</title></head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1">
+  <rect width="200" height="200" cx="300" cy="400" stroke="red" fill="white"/>
+  <circle cx="100" cy="50" r="40" stroke="black"
+  stroke-width="2" fill="red"/>
+  <circle cx="0" cy="30" r="30" stroke="black"
+  stroke-width="2" fill="blue"/>
+</svg>
+
+<script language="javascript">
+
+// Most basic meta-data: track whether a procedure returns a value (applicative)
+// or is void (command).
+function applicative(f) {
+  f.isCommand = false;
+  f.isApplicative = true;
+  return f }
+
+applicative(applicative);
+
+var command = applicative(function command(f) {
+  f.isCommand = true;
+  f.isApplicative = false;
+  return f })
+
+var pure = applicative(function pure(f) {
+  applicative(f);
+  f.isPure = true;
+  return f})
+
+var pe = command(function pe (x) { document.appendChild(x); });
+
+var pr = command(function pr (x) {
+    // document.write(x);
+    pe(document.createTextNode(x));
+});
+
+var prs = command(function prs(x) { pr(x); pr(" "); })
+var println = command(function println(x) { pr(x); pe("<br/>"); })
+</script>
+<script language="javascript">
+
+pure(function quoted(x) { return '"' + escape(x) + '"'; })
+prs("hi");
+</script>
+<script language="javascript">
+for (k in pr) {
+    prs(k);
+}
+
+</script>
+<script language="javascript">
+println("hello");
+pure(function angled(t, attrs) {
+    var s = "<"+t+" ";
+    var k;
+    for (k in attrs) {
+        s += (k + '=' + quoted(attrs[k]))
+    }
+    s += ">";
+    return s;
+});
+</script>
+<script language="javascript">
+function tag(t, body) {
+    if (body is Function) {
+        return function() {
+            pr(angled(t, {}));
+            body();
+            pr('</'+t+'>');
+        }
+    } else {
+        return (angled(t, {}) + body + '</'+t+'>');
+    }
+}
+
+function item(x) { tag("li", function () { pr(x); }); }
+
+function tt(x) { return tag("tt", function () { pr(x); }); }
+
+function ulist(l) {
+    println("<ul>");
+    var i;
+    for (i in l) { item(l[i]); }
+    println("</ul>");
+}
+
+println("hi");
+</script>
+
+One script down, one to go.
+
+<script language="javascript">
+ulist(["Hello World",
+       "Is this interesting: "+JSON.stringify(document),
+       "How about this: "+String.fromCharCode(10),
+       "How about this: "+String.fromCharCode(97)]);
+
+var a = {};
+var k;
+for (var i=32; i<97+26*3; i++) {
+    k = String.fromCharCode(i);
+    a[i] = "How about this: "+i+" " +tt(k)
+}
+ulist(a);
+
+a = {}
+for (var i=0; i<1000; i++) {
+    var k = String.fromCharCode(i);
+    if (k in document) {
+        a[i] = "How about this: "+k
+    }
+}
+ulist(a);
+
+</script>
+
+
+</body></html>
